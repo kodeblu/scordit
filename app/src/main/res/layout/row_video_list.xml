@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="10dp"
+   android:orientation="vertical"
+   >
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+
+        android:layout_marginTop="5dp">
+        <ImageView
+            android:layout_width="120dp"
+            android:layout_height="90dp"
+
+            android:id="@+id/thumbnail"
+            android:background="@color/colorDarkAngel"
+            />
+        <TextView
+            android:layout_width="40dp"
+            android:layout_height="10dp"
+            android:background="@color/colorDarkAngel"
+            android:text="@string/video_length"
+            android:textColor="@color/colorAngel"
+            android:layout_gravity="bottom"
+            android:layout_marginLeft="-40dp"
+            android:layout_marginStart="-40dp"
+            android:textSize="8sp"
+
+            android:gravity="center"
+            android:id="@+id/video_duration"/>
+        <TextView
+            android:id="@+id/video_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginLeft="12dp"
+            android:textSize="13sp"
+            android:textColor="@color/colorDarkAngel"
+            />
+
+
+
+
+    </LinearLayout>
+    <!--<LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+
+        android:layout_marginTop="5dp">
+        <RelativeLayout
+            android:layout_width="120dp"
+            android:layout_height="90dp"
+            android:background="@color/colorDarkAngel"
+            >
+
+        </RelativeLayout>
+        <TextView
+
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="some video a name"
+            android:layout_gravity="center_vertical"
+            android:layout_marginLeft="13dp"
+            android:textSize="15sp"
+            />
+    </LinearLayout>-->
+
+</LinearLayout>
+
+

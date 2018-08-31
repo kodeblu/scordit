@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#3F51B5</color>
+    <color name="colorPrimaryDark">#303F9F</color>
+    <color name="colorAccent">#FF4081</color>
+    <color name="colorBloodAngel">#DB4437</color>
+    <color name="colorDarkAngel">#000</color>
+    <color name="colorAngel">#fff</color>
+    <color name="colorDarkAngelLight">#bbb</color>
+    <color name="colorTheme">#F3EFEC</color>
+    <color name="colorThemeLight">#E39356</color>
+    <color name="colorThemeBtn">#2196D9</color>
+
+    <color name="colorHeader">#736F6E</color>
+
+</resources>

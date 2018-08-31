@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">ScordIt</string>
+    <string name="app_ram_alert">You phone appears to be running slow,
+        consider closing some applications before running ScordIt; to ensure optimal performance</string>
+    <string name="app_name_description">Made with love by Benny\n\r
+        Special thanks: Che, for destructive criticisms\n\rEmail:orjibenny619@gmail.com\n\r
+        by the way scordit stands for screen record it, with that out of the way; enjoy.</string>
+    <string name="swipe_left">Swipe left to share</string>
+    <string name="swipe_right">Swipe right to delete</string>
+    <string name="empty_msg">No videos</string>
+    <string name="video_length">video Duration</string>
+</resources>
