@@ -306,7 +306,7 @@ public class BackgroundTask extends Service{
     }
     private void runningNotification(){
         builder = new NotificationCompat.Builder(this);
-        builder.setLargeIcon(BitmapFactory.decodeResource(getResources(),R.drawable.icon_one));
+        builder.setLargeIcon(BitmapFactory.decodeResource(getResources(),R.drawable.screen_recording));
         builder.setSmallIcon(R.drawable.small_icon);
        // builder.setLargeIcon(R.drawable.icon_one)
         builder.setContentTitle(getString(R.string.app_name));

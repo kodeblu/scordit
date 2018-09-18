@@ -141,6 +141,7 @@ public class TestActivity extends AppCompatActivity{
     private static final int DISPLAY_HEIGHT = 1280;
     private int screenDensity;
 
+    public static boolean hasUpadate = true;
 
     public FloatingActionButton scrab;
 
@@ -164,6 +165,8 @@ public class TestActivity extends AppCompatActivity{
             requestAllpermissions();
             //checkDrawOverPermission();
         }
+        VersionCheck versionCheck = new VersionCheck(this,TestActivity.this);
+        versionCheck.execute();
 
         swipe_desc = (RelativeLayout) findViewById(R.id.swipe_desc);
         videoRecycler = (RecyclerView) findViewById(R.id.video_list);
@@ -174,7 +177,7 @@ public class TestActivity extends AppCompatActivity{
         //videoRecycler.setHasFixedSize(true);
         checkDrawOverPermission();
         testActivity = this;
-
+        Toast.makeText(this,VersionControl.SOFTWARE_VERSION,Toast.LENGTH_LONG).show();
         DisplayMetrics display = new DisplayMetrics();
         getWindowManager().getDefaultDisplay().getMetrics(display);
         screenDensity = display.densityDpi;
@@ -672,4 +675,5 @@ public class TestActivity extends AppCompatActivity{
         })
                 .setMessage(getString(R.string.app_ram_alert)).show();
     }
+
 }

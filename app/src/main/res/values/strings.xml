@@ -9,4 +9,5 @@
     <string name="swipe_right">Swipe right to delete</string>
     <string name="empty_msg">No videos</string>
     <string name="video_length">video Duration</string>
+    <string name="update_alert">A new version of ScordIt is available</string>
 </resources>
