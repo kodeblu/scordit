@@ -3,6 +3,7 @@ package com.bencorp.scrab;
 import android.Manifest;
 import android.app.Activity;
 import android.app.IntentService;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
@@ -39,11 +40,14 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
 import android.support.v4.app.ActivityCompat;
+
+import android.support.v4.app.NotificationCompatSideChannelService;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.ActionBar;
-import android.support.v7.app.NotificationCompat;
+import android.support.v4.app.NotificationCompat;
 import android.support.v7.widget.Toolbar;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
 import android.view.Display;
@@ -75,7 +79,7 @@ public class BackgroundTask extends Service{
     private View mFloatingView, collapsedView, expandedView;
     private  NotificationCompat.Builder builder;
     private NotificationManager notificationManager;
-
+    public static final String NOTIFICATION_CHANNEL_ID = "10001";
     private TextureView textureView;
     CameraManager cameraManager;
     String cameraId;
@@ -146,10 +150,16 @@ public class BackgroundTask extends Service{
     @Override
     public int onStartCommand(Intent intent,  int flags, int startId) {
         startBackgroundThread();
-        mediaRecorder = TestActivity.getInstance().initRecorder();
-        TestActivity.getInstance().recordScreen();
-        floatingView();
+        //mediaRecorder = TestActivity.getInstance().initRecorder();
+        //TestActivity.getInstance().recordScreen();
+        //Toast.makeText(this,(TestActivity.getRecordState())?"in service and on":"in and off",Toast.LENGTH_LONG).show();
+        if(TestActivity.allowCamera){
+            floatingView();
+        }
+
         runningNotification();
+
+
 
         return START_STICKY;
     }
@@ -221,14 +231,20 @@ public class BackgroundTask extends Service{
         }
     }
     private void floatingView(){
+        //LayoutInflater layoutInflater = (LayoutInflater)getSystemService(LAYOUT_INFLATER_SERVICE);
         mFloatingView = LayoutInflater.from(this).inflate(R.layout.activity_selfie_widget, null);
         initCamera();
-
+        int LAYOUT_FLAG;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            LAYOUT_FLAG = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
+        } else {
+            LAYOUT_FLAG = WindowManager.LayoutParams.TYPE_PHONE;
+        }
         //Add the view to the window.
         final WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
-                WindowManager.LayoutParams.TYPE_PHONE,
+                LAYOUT_FLAG,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                 PixelFormat.TRANSLUCENT);
 
@@ -290,8 +306,8 @@ public class BackgroundTask extends Service{
         notificationManager.cancel(1);
         stopBackgroundThread();
         closeCamera();
-        mediaRecorder.stop();
-        mediaRecorder.reset();
+        //mediaRecorder.stop();
+        //mediaRecorder.reset();
         if (mFloatingView != null) mWindowManager.removeView(mFloatingView);
         Toast.makeText(this,"ScordIt has stopped",Toast.LENGTH_LONG).show();
         new Handler().postDelayed(new Runnable() {
@@ -305,19 +321,34 @@ public class BackgroundTask extends Service{
         },2000);
     }
     private void runningNotification(){
-        builder = new NotificationCompat.Builder(this);
+        notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O)
+        {
+            int importance = NotificationManager.IMPORTANCE_HIGH;
+            NotificationChannel notificationChannel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, "NOTIFICATION_CHANNEL_NAME", importance);
+            notificationChannel.enableVibration(true);
+            notificationChannel.setVibrationPattern(new long[]{100, 200, 300, 400, 500, 400, 300, 200, 400});
+            //assert notificationManager != null;
+            //builder.setChannelId(NOTIFICATION_CHANNEL_ID);
+            notificationManager.createNotificationChannel(notificationChannel);
+        }
+
+        builder = new NotificationCompat.Builder(this,NOTIFICATION_CHANNEL_ID);
         builder.setLargeIcon(BitmapFactory.decodeResource(getResources(),R.drawable.screen_recording));
         builder.setSmallIcon(R.drawable.small_icon);
-       // builder.setLargeIcon(R.drawable.icon_one)
+        // builder.setLargeIcon(R.drawable.icon_one)
         builder.setContentTitle(getString(R.string.app_name));
         builder.setContentText("ScordIt is running, tap to stop");
         builder.setOngoing(true);
+
         Intent intent = new Intent(BackgroundTask.this,NotificationReceiver.class);
         PendingIntent pendingIntent = PendingIntent.getBroadcast(this,0,intent,PendingIntent.FLAG_UPDATE_CURRENT);
 
         builder.setContentIntent(pendingIntent);
 
-         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+
         notificationManager.notify(1,builder.build());
     }
 

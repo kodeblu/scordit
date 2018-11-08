@@ -6,9 +6,12 @@ import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.ClipData;
 import android.content.ClipDescription;
+import android.content.ComponentName;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.ActivityInfo;
+import android.content.pm.ResolveInfo;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.hardware.display.DisplayManager;
@@ -74,6 +77,10 @@ import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.request.animation.GlideAnimationFactory;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -88,6 +95,14 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.FormBody;
+import okhttp3.HttpUrl;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+
 public class TestActivity extends AppCompatActivity{
 
     private Button takePictureButton;
@@ -99,6 +114,7 @@ public class TestActivity extends AppCompatActivity{
     static TestActivity testActivity;
     RelativeLayout swipe_desc;
     TextView empty;
+
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
     static {
         ORIENTATIONS.append(Surface.ROTATION_0, 90);
@@ -116,10 +132,14 @@ public class TestActivity extends AppCompatActivity{
     private File file;
     //private static final int REQUEST_CAMERA_PERMISSION = 200;
     private boolean mFlashSupported;
+    private ImageView toggle_btn;
+    private ImageView toggle_camera;
 
     private static final int REQUEST_CODE = 999;
     private static final int REQUEST_PERMISSION = 888;
     private static final int REQUEST_DRAW_OVER_PERMISSION = 777;
+    public static boolean allowCamera = true;
+
 
     //private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
 
@@ -140,13 +160,13 @@ public class TestActivity extends AppCompatActivity{
     private static final int DISPLAY_WIDTH = 720;
     private static final int DISPLAY_HEIGHT = 1280;
     private int screenDensity;
-
+    private ArrayList<String> permissions;
     public static boolean hasUpadate = true;
-
+    private Boolean showList = false;
     public FloatingActionButton scrab;
 
     private String VideoUri = "";
-    private Boolean isRecording = false;
+    public static Boolean isRecording = false;
     protected CameraCaptureSession cameraCaptureSessions;
     protected CaptureRequest captureRequest;
     protected CaptureRequest.Builder captureRequestBuilder;
@@ -162,12 +182,13 @@ public class TestActivity extends AppCompatActivity{
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.activity_test);
         if(shouldAskPermission()){
+
             requestAllpermissions();
             //checkDrawOverPermission();
         }
-        VersionCheck versionCheck = new VersionCheck(this,TestActivity.this);
-        versionCheck.execute();
 
+        toggle_btn = (ImageView) findViewById(R.id.toggle_btn);
+        toggle_camera = (ImageView) findViewById(R.id.toggle_camera);
         swipe_desc = (RelativeLayout) findViewById(R.id.swipe_desc);
         videoRecycler = (RecyclerView) findViewById(R.id.video_list);
         layoutManager = new LinearLayoutManager(getApplicationContext());
@@ -177,7 +198,6 @@ public class TestActivity extends AppCompatActivity{
         //videoRecycler.setHasFixedSize(true);
         checkDrawOverPermission();
         testActivity = this;
-        Toast.makeText(this,VersionControl.SOFTWARE_VERSION,Toast.LENGTH_LONG).show();
         DisplayMetrics display = new DisplayMetrics();
         getWindowManager().getDefaultDisplay().getMetrics(display);
         screenDensity = display.densityDpi;
@@ -188,8 +208,14 @@ public class TestActivity extends AppCompatActivity{
         //toggleAnime.setAnimationListener();
 
 
+        versionCheck();
+        if(Build.VERSION.SDK_INT == 21 || Build.VERSION.SDK_INT == 22){
 
-        createList();
+            createList();
+        }
+        if(showList){
+            createList();
+        }
 
         scrab = (FloatingActionButton) findViewById(R.id.scrabButton);
         scrab.setOnClickListener(new View.OnClickListener(){
@@ -203,8 +229,13 @@ public class TestActivity extends AppCompatActivity{
                             requestAllpermissions();
 
                         }
-                        checkDrawOverPermission();
-                        toggleScreenShare();
+                        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
+                            checkDrawOverPermission();
+                            toggleScreenShare();
+                        }else{
+                            Toast.makeText(getApplicationContext(),"Your android version is not supported",Toast.LENGTH_LONG).show();
+                        }
+
                     }else {
                         ramDialog();
                     }
@@ -214,6 +245,14 @@ public class TestActivity extends AppCompatActivity{
 
 
                 //startActivity(new Intent(TestActivity.this,SelfieWidgetActivity.class));
+            }
+        });
+        Glide.with(this).load(R.drawable.toggle_camera_on).into(toggle_btn);
+        toggle_btn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+               toggleCamera();
+                //Toast.makeText(getApplicationContext(),"camera",Toast.LENGTH_LONG).show();
             }
         });
         notifyState();
@@ -227,7 +266,7 @@ public class TestActivity extends AppCompatActivity{
 
 
     public void requestAllpermissions(){
-        ArrayList<String> permissions = new ArrayList<>();
+        permissions = new ArrayList<>();
         if(ActivityCompat.checkSelfPermission(TestActivity.this,Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED){
             permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
         }
@@ -237,12 +276,18 @@ public class TestActivity extends AppCompatActivity{
         if(ActivityCompat.checkSelfPermission(TestActivity.this,Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED){
             permissions.add(Manifest.permission.CAMERA);
         }
+        if(ActivityCompat.checkSelfPermission(TestActivity.this,Manifest.permission.INTERNET) != PackageManager.PERMISSION_GRANTED){
+            permissions.add(Manifest.permission.INTERNET);
+        }
         /*if(ActivityCompat.checkSelfPermission(TestActivity.this,Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED){
             permissions.add(Manifest.permission.SYSTEM_ALERT_WINDOW);
         }*/
         if(permissions.size() > 0){
             //Toast.makeText(this,"requesting",Toast.LENGTH_LONG).show();
             ActivityCompat.requestPermissions(TestActivity.this,permissions.toArray(new String[permissions.size()]),REQUEST_PERMISSION);
+        }else{
+            showList = true;
+            //Toast.makeText(this,"user has accepted all",Toast.LENGTH_LONG).show();
         }
     }
     public Boolean shouldAskPermission(){
@@ -275,6 +320,9 @@ public class TestActivity extends AppCompatActivity{
     public static TestActivity getInstance(){
         return testActivity;
     }
+    public static Boolean getRecordState(){
+        return isRecording;
+    }
 
 
     private void checkDrawOverPermission(){
@@ -300,6 +348,7 @@ public class TestActivity extends AppCompatActivity{
            }
 
        }
+        createList();
     }
 
 
@@ -311,7 +360,6 @@ public class TestActivity extends AppCompatActivity{
             finish();
         }
         super.onResume();
-        createList();
     }
     private Boolean enoughRam(){
         ActivityManager.MemoryInfo memoryInfo = getAvailableMemory();
@@ -345,11 +393,13 @@ public class TestActivity extends AppCompatActivity{
     public void toggleScreenShare() {
         scrab.setEnabled(false);
         if(!isServicRunning(BackgroundTask.class)){
-            startService( new Intent(TestActivity.this,BackgroundTask.class));
-            scrab.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#DB4437")));
+            //startService( new Intent(TestActivity.this,BackgroundTask.class));
+            //scrab.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#DB4437")));
+            recordScreen();
         }else {
             stopService( new Intent(TestActivity.this,BackgroundTask.class));
             scrab.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#2196D9")));
+            isRecording = false;
             //scrab.setBackgroundColor();
             //Service service  = (Service) new BackgroundTask();
             //service.stopSelf();
@@ -445,10 +495,9 @@ public class TestActivity extends AppCompatActivity{
     private class MediaProjectionCallback extends MediaProjection.Callback {
         @Override
         public void onStop() {
-
             mediaRecorder.stop();
             mediaRecorder.release();
-            mediaProjection= null;
+            mediaProjection = null;
             stopRecorder();
             super.onStop();
         }
@@ -468,16 +517,19 @@ public class TestActivity extends AppCompatActivity{
 
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_CODE && resultCode == RESULT_OK && data != null) {
-            //Log.d("res",Integer.toString(resultCode));
+            initRecorder();
+            startService( new Intent(TestActivity.this,BackgroundTask.class));
+            scrab.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#DB4437")));
+
             mediaProjectionCallback = new MediaProjectionCallback();
             mediaProjection = mediaProjectionManager.getMediaProjection(resultCode,data);
             mediaProjection.registerCallback(mediaProjectionCallback,null);
             virtualDisplay = createVirtualDisplay();
             //Toast.makeText(this,"Recorder Started",Toast.LENGTH_LONG).show();
-
             mediaRecorder.start();
-
+            isRecording = true;
             Toast.makeText(this,"ScordIt has started",Toast.LENGTH_LONG).show();
+
             finish();
             //ftoggtoggleButton.setBackgroundTintList(ColorStateList.valueOf(Color.YELLOW));
 
@@ -501,9 +553,17 @@ public class TestActivity extends AppCompatActivity{
 
         }else {
             Toast.makeText(this,
-                    "Unknown error",
+                    "stopping scordit",
                     Toast.LENGTH_SHORT).show();
-            finish();
+            scrab.setEnabled(true);
+            //if(isServicRunning(BackgroundTask.class)){
+
+                //scrab.setBackgroundColor();
+                //Service service  = (Service) new BackgroundTask();
+                //service.stopSelf();
+           // }
+
+            //finish();
         }
         super.onActivityResult(requestCode, resultCode, data);
     }
@@ -569,16 +629,18 @@ public class TestActivity extends AppCompatActivity{
                         shareIntent.putExtra(Intent.EXTRA_STREAM,videoUri);
                         shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
                         if(shareIntent.resolveActivity(getPackageManager()) != null){
-                            //Toast.makeText(getApplicationContext(),"resolved",Toast.LENGTH_LONG).show();
+                            //Toast.makeText(getApplicationContext(),"sharing",Toast.LENGTH_LONG).show();
                             startActivity(shareIntent);
+
                         }else {
                             Toast.makeText(getApplicationContext(),"No applictaion found for that",Toast.LENGTH_LONG).show();
-                        }
 
+                        }
+                        videoListAdapter.notifyDataSetChanged();
                        stopBackgroundThread();
                     }
                 }).attachToRecyclerView(videoRecycler);
-                new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(0,
+                /*new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(0,
                         ItemTouchHelper.LEFT) {
                     @Override
                     public boolean onMove(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder, RecyclerView.ViewHolder target) {
@@ -598,15 +660,17 @@ public class TestActivity extends AppCompatActivity{
                         shareIntent.putExtra(Intent.EXTRA_STREAM,videoUri);
                         shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
                         if(shareIntent.resolveActivity(getPackageManager()) != null){
-                            //Toast.makeText(getApplicationContext(),"resolved",Toast.LENGTH_LONG).show();
+                            //Toast.makeText(getApplicationContext(),"sharing",Toast.LENGTH_LONG).show();
                             startActivity(shareIntent);
+                            videoListAdapter.notifyDataSetChanged();
                         }else {
                             Toast.makeText(getApplicationContext(),"No applictaion found for that",Toast.LENGTH_LONG).show();
+                            videoListAdapter.notifyDataSetChanged();
                         }
 
                        stopBackgroundThread();
                     }
-                }).attachToRecyclerView(videoRecycler);
+                }).attachToRecyclerView(videoRecycler);*/
 
 
             }else{
@@ -664,8 +728,14 @@ public class TestActivity extends AppCompatActivity{
                             requestAllpermissions();
 
                         }
-                        checkDrawOverPermission();
-                        toggleScreenShare();
+
+                        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
+                            checkDrawOverPermission();
+                            toggleScreenShare();
+                        }else{
+                            Toast.makeText(getApplicationContext(),"Your android version is not supported",Toast.LENGTH_LONG).show();
+                        }
+
                     }
                 }).setNegativeButton("Disagree", new DialogInterface.OnClickListener() {
                     @Override
@@ -675,5 +745,122 @@ public class TestActivity extends AppCompatActivity{
         })
                 .setMessage(getString(R.string.app_ram_alert)).show();
     }
+    public void  versionCheck(){
+        FormBody.Builder formBody = new FormBody.Builder();
+        formBody.add("softwareVersion",VersionControl.SOFTWARE_VERSION);
+        FormBody formData = formBody.build();
 
+        Request request = new Request.Builder()
+                .url("https://orjibenny.000webhostapp.com/server/php/versioning.php")
+                .post(formData)
+                .build();
+        OkHttpClient client = new OkHttpClient();
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                final String msg = e.getMessage();
+                /*runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(getApplicationContext(),"error!!!:"+msg,Toast.LENGTH_LONG).show();
+                    }
+                });*/
+
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                    if(!response.isSuccessful()){
+                       /* runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(getApplicationContext(),"sums wrong",Toast.LENGTH_LONG).show();
+                            }
+                        });*/
+
+                    }else {
+                        String responseText = response.body().string();
+                        final String fake = responseText;
+                        if(responseText.equals("1")){
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    updateDialog();
+                                }
+                            });
+
+                        }
+
+                    }
+            }
+        });
+    }
+    private void updateDialog(){
+
+        new AlertDialog.Builder(TestActivity.this)
+                .setCancelable(true)
+                .setTitle("New Version Available")
+                .setPositiveButton("update", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        String appId = getPackageName();
+                        Intent rateIntent = new Intent(Intent.ACTION_VIEW,
+                                Uri.parse("market://details?id=" + appId));
+                        boolean marketFound = false;
+                        final List<ResolveInfo> otherApps = getPackageManager()
+                                .queryIntentActivities(rateIntent, 0);
+                        for (ResolveInfo otherApp: otherApps){
+                            if (otherApp.activityInfo.applicationInfo.packageName
+                                    .equals("com.android.vending")) {
+
+                                ActivityInfo otherAppActivity = otherApp.activityInfo;
+                                ComponentName componentName = new ComponentName(
+                                        otherAppActivity.applicationInfo.packageName,
+                                        otherAppActivity.name
+                                );
+                                // make sure it does NOT open in the stack of your activity
+                                rateIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                // task reparenting if needed
+                                rateIntent.addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+                                // if the Google Play was already open in a search result
+                                //  this make sure it still go to the app page you requested
+                                rateIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                                // this make sure only the Google Play app is allowed to
+                                // intercept the intent
+                                rateIntent.setComponent(componentName);
+                                startActivity(rateIntent);
+                                marketFound = true;
+                                break;
+
+                            }
+                        }
+                        if (!marketFound) {
+                            Intent webIntent = new Intent(Intent.ACTION_VIEW,
+                                    Uri.parse("https://play.google.com/store/apps/details?id="+appId));
+                            startActivity(webIntent);
+                        }
+                    }
+                }).setNegativeButton("Not now", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+
+            }
+        })
+                .setMessage(getString(R.string.update_alert)).show()
+        .setCancelable(false);
+
+    }
+    public void toggleCamera(){
+        if(allowCamera){
+            Glide.with(this).load(R.drawable.toggle_camera_off).into(toggle_btn);
+            Glide.with(this).load(R.drawable.camera_off).into(toggle_camera);
+            allowCamera = false;
+        }else{
+            Glide.with(this).load(R.drawable.toggle_camera_on).into(toggle_btn);
+            Glide.with(this).load(R.drawable.camera_on).into(toggle_camera);
+            allowCamera = true;
+        }
+
+
+    }
 }

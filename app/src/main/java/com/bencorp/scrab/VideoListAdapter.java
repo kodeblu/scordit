@@ -51,7 +51,7 @@ public class VideoListAdapter extends RecyclerView.Adapter<VideoListAdapter.Recy
         public RecyclerViewHolder(final View itemView) {
             super(itemView);
             name = (TextView) itemView.findViewById(R.id.video_name);
-            videoDuration = (TextView) itemView.findViewById(R.id.video_duration);
+            //videoDuration = (TextView) itemView.findViewById(R.id.video_duration);
             thumbnail = (ImageView) itemView.findViewById(R.id.thumbnail);
 
 
@@ -82,10 +82,10 @@ public class VideoListAdapter extends RecyclerView.Adapter<VideoListAdapter.Recy
                 .into(holder.thumbnail);
         holder.name.setText(video.getFileName());
         //Toast.makeText(context,"clicked "+video.getFileName(),Toast.LENGTH_LONG).show();
-        MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-        try {
-            FileInputStream inputStream = new FileInputStream(FolderPath.filePath(video.getFileName()+".mp4").getAbsolutePath());
-            retriever.setDataSource(inputStream.getFD());
+        /*MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+        //try {
+            //FileInputStream inputStream = new FileInputStream(FolderPath.filePath(video.getFileName()+".mp4").getAbsolutePath());
+            retriever.setDataSource(FolderPath.filePath(video.getFileName()+".mp4").getAbsolutePath());
             String time = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
             Long timeInMillisec = Long.parseLong(time);
             Long duration = timeInMillisec/1000;
@@ -98,7 +98,7 @@ public class VideoListAdapter extends RecyclerView.Adapter<VideoListAdapter.Recy
             e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
-        }
+        }*/
 
         holder.itemView.setTag(position);
        holder.itemView.setOnClickListener(new View.OnClickListener() {
